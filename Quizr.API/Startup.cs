@@ -16,6 +16,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Quizr.API.Contexts;
+using Quizr.API.Hubs;
 
 namespace Quizr.API
 {
@@ -38,6 +39,7 @@ namespace Quizr.API
                 .AddEntityFrameworkStores<QuizrContext>()
                 .AddDefaultTokenProviders();
 
+            services.AddSignalR();
 
             JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear(); // => remove default claims
 
@@ -76,6 +78,12 @@ namespace Quizr.API
             }
 
             app.UseHttpsRedirection();
+
+            app.UseSignalR(routes =>
+            {
+                routes.MapHub<QuizrHub>("/quizrhub");
+            });
+
             app.UseMvc();
         }
     }
