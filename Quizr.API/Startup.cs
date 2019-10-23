@@ -41,7 +41,7 @@ namespace Quizr.API
 
             services.AddSignalR();
 
-            JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear(); // => remove default claims
+            JwtSecurityTokenHandler.DefaultInboundClaimTypeMap.Clear(); // => remove default claim
 
             services
                 .AddAuthentication(options =>
