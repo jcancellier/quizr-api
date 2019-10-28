@@ -14,6 +14,13 @@ namespace Quizr.API.Hubs
         /// Dictionary mapping connectionIds to Users
         /// </summary>
         private static ConcurrentDictionary<string, User> quizrClients = new ConcurrentDictionary<string, User>();
+         
+        /// <summary>
+        /// Dictionary mapping room IDs to Rooms (represented by groups)
+        /// </summary>
+        private static ConcurrentDictionary<string, Room> quizrRooms = new ConcurrentDictionary<string, Room> {
+             ["#test"] = new Room { Id = "#test" } 
+        };
 
         public override Task OnConnectedAsync()
         {
@@ -26,8 +33,10 @@ namespace Quizr.API.Hubs
             User userToDelete = quizrClients.Where(client => client.Value.ConnectionId == Context.ConnectionId).FirstOrDefault().Value;
             bool userRemoved;
 
+            // If user found
             if(userToDelete != null)
             {
+                // Remove user from connected quizrClients
                 userRemoved = quizrClients.TryRemove(userToDelete.Name, out _);
                 if (userRemoved)
                     Console.WriteLine("user removed");
@@ -52,6 +61,21 @@ namespace Quizr.API.Hubs
             }
 
             throw new HubException("User already exists");
+        }
+
+        public async Task<Room> AddUserToRoom(string userName, string roomId)
+        {
+            bool roomExists = quizrRooms.ContainsKey(roomId);
+            if (roomExists)
+            {
+                await Groups.AddToGroupAsync(quizrClients[userName].ConnectionId, roomId);
+                await Clients.Group(roomId).SendAsync("GroupMessage", $"{userName} connected!!!");
+                return quizrRooms[roomId];
+            } 
+            else
+            {
+                throw new HubException("Group Does not exist");
+            }
         }
     }
 }

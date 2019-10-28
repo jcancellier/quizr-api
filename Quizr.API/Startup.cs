@@ -42,9 +42,9 @@ namespace Quizr.API
                         .AllowAnyHeader()
                         .WithOrigins("http://localhost:3000",
                             "https://quizr-app.herokuapp.com",
-                            "https://jcancellier.github.io")
+                            "https://jcancellier.github.io"
+                            )
                         .AllowCredentials();
-
                 });
             });
 
