@@ -18,8 +18,8 @@ namespace Quizr.API.Hubs
         /// <summary>
         /// Dictionary mapping room IDs to Rooms (represented by groups)
         /// </summary>
-        private static ConcurrentDictionary<string, Room> quizrRooms = new ConcurrentDictionary<string, Room> {
-             ["#test"] = new Room { Id = "#test" } 
+        private static List<Room> quizrRooms = new List<Room> {
+             new Room { Id = "#test" } 
         };
 
         public override Task OnConnectedAsync()
@@ -30,7 +30,7 @@ namespace Quizr.API.Hubs
 
         public override Task OnDisconnectedAsync(Exception exception)
         {
-            User userToDelete = quizrClients.Where(client => client.Value.ConnectionId == Context.ConnectionId).FirstOrDefault().Value;
+            User userToDelete = quizrClients.FirstOrDefault(client => client.Value.ConnectionId == Context.ConnectionId).Value;
             bool userRemoved;
 
             // If user found
@@ -65,12 +65,12 @@ namespace Quizr.API.Hubs
 
         public async Task<Room> AddUserToRoom(string userName, string roomId)
         {
-            bool roomExists = quizrRooms.ContainsKey(roomId);
+            Room room = quizrRooms.FirstOrDefault(r => r.Id == roomId);
+            bool roomExists = room != null;
             if (roomExists)
             {
                 await Groups.AddToGroupAsync(quizrClients[userName].ConnectionId, roomId);
-                await Clients.Group(roomId).SendAsync("GroupMessage", $"{userName} connected!!!");
-                return quizrRooms[roomId];
+                return room;
             } 
             else
             {
