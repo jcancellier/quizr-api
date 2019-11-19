@@ -5,7 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Quizr.API.Models;
-Ï
+
 namespace Quizr.API.Hubs
 {
     public class QuizrHub : Hub
