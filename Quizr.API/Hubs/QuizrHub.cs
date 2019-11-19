@@ -5,18 +5,18 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Quizr.API.Models;
-
+Ï
 namespace Quizr.API.Hubs
 {
     public class QuizrHub : Hub
     {
         /// <summary>
-        /// Dictionary mapping connectionIds to Users
+        /// Dictionary mapping usernames to User objects (ensures unique usernames)
         /// </summary>
         private static ConcurrentDictionary<string, User> quizrClients = new ConcurrentDictionary<string, User>();
          
         /// <summary>
-        /// Dictionary mapping room IDs to Rooms (represented by groups)
+        /// Quiz Rooms available (represented by groups)
         /// </summary>
         private static List<Room> quizrRooms = new List<Room> {
              new Room { Id = "#test" } 
@@ -66,16 +66,13 @@ namespace Quizr.API.Hubs
         public async Task<Room> AddUserToRoom(string userName, string roomId)
         {
             Room room = quizrRooms.FirstOrDefault(r => r.Id == roomId);
-            bool roomExists = room != null;
-            if (roomExists)
+            if (room != null)
             {
                 await Groups.AddToGroupAsync(quizrClients[userName].ConnectionId, roomId);
                 return room;
             } 
-            else
-            {
-                throw new HubException("Group Does not exist");
-            }
+
+            throw new HubException("Group Does not exist");
         }
     }
 }
