@@ -54,7 +54,6 @@ namespace Quizr.API.Models
 
         public void OnTimerFinished(object timer)
         {
-
             // TODO: Quiz Phasing
             // 1. Lobby
             // 2. Prequestion
