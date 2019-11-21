@@ -17,6 +17,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Quizr.API.Contexts;
 using Quizr.API.Hubs;
+using Quizr.API.Services;
 
 namespace Quizr.API
 {
@@ -47,6 +48,9 @@ namespace Quizr.API
                         .AllowCredentials();
                 });
             });
+
+            // Custom services 
+            services.AddTransient<IQuizrHubContextService, QuizrHubContextService>();
 
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
             services.AddDbContext<QuizrContext>();

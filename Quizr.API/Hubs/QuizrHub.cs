@@ -5,10 +5,13 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Quizr.API.Models;
+using Microsoft.AspNetCore.Http;
+using Quizr.API.Services;
+using Quizr.API.Constants.Room;
 
 namespace Quizr.API.Hubs
 {
-    public class QuizrHub : Hub
+    public class QuizrHub : Hub<IQuizrClient>
     {
         /// <summary>
         /// Dictionary mapping usernames to User objects (ensures unique usernames)
@@ -19,11 +22,19 @@ namespace Quizr.API.Hubs
         /// Quiz Rooms available (represented by groups)
         /// </summary>
         private static List<Room> quizrRooms = new List<Room> {
-             new Room { Id = "#test" } 
+             //new Room { Id = "#test" }
         };
 
         public override Task OnConnectedAsync()
         {
+            // Add default room for testing purposes when first user connects
+            if (!quizrRooms.Any())
+            {
+                var quizrHubContextService = (IQuizrHubContextService)Context.GetHttpContext().RequestServices.GetService(typeof(IQuizrHubContextService));
+                quizrRooms.Add(new Room(quizrHubContextService.GetQuizrHubContext()));
+                quizrRooms[0].Id = "#test";
+            }
+
             Console.WriteLine($"{Context.ConnectionId} connected");
             return base.OnConnectedAsync();
         }
@@ -66,9 +77,14 @@ namespace Quizr.API.Hubs
         public async Task<Room> AddUserToRoom(string userName, string roomId)
         {
             Room room = quizrRooms.FirstOrDefault(r => r.Id == roomId);
-            if (room != null)
+            if (room != null && (room.Phase == RoomPhase.NotStarted || room.Phase == RoomPhase.Lobby || room.Phase == RoomPhase.Finished))
             {
+
                 await Groups.AddToGroupAsync(quizrClients[userName].ConnectionId, roomId);
+
+                // Send current time to user
+                await Clients.Group(room.Id).UpdateRoomTimer(room.CurrentTime);
+                room.StartTimer();
                 return room;
             } 
 
