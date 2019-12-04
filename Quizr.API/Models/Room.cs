@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.SignalR;
 using Quizr.API.Constants.Room;
 using Quizr.API.Hubs;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using System.Timers;
 
 namespace Quizr.API.Models
@@ -11,11 +13,12 @@ namespace Quizr.API.Models
 
         public string Id { get; set; }
         public int QuizId { get; set; }
+        public List<string> Users { get; set; } = new List<string>();
         public int CurrentQuestionIndex { get; set; } = 0;
         public RoomPhase Phase { get; set; } = RoomPhase.NotStarted;
         public int CurrentTime { get; set; } = (int) RoomTime.Lobby;
         public Timer Timer { get; set; } = new Timer();
-
+        
         public Room(IHubContext<QuizrHub, IQuizrClient> quizrHubContext)
         {
             _hubContext = quizrHubContext;
@@ -41,12 +44,12 @@ namespace Quizr.API.Models
             }
         }
 
-        public async void UpdateTime(object source, ElapsedEventArgs e)
+        public void UpdateTime(object source, ElapsedEventArgs e)
         {
             CurrentTime--;
 
             // Emit time change to Room
-            await _hubContext.Clients.Group(Id).UpdateRoomTimer(CurrentTime);
+            _hubContext.Clients.Group(Id).UpdateRoomTimer(CurrentTime);
 
             if (CurrentTime <= 0)
             {
@@ -56,26 +59,21 @@ namespace Quizr.API.Models
 
         public void OnTimerFinished(object timer)
         {
-            // TODO: Quiz Phasing
-            // 1. Lobby
-            // 2. Prequestion
-            // 3. Question
-            // 4. Finished
             Timer tempTimer = (Timer)timer;
 
             // set time and phase for next quiz phase
             switch (Phase)
             {
                 case RoomPhase.Lobby:
-                    CurrentTime = (int)RoomTime.Prequestion;
+                    ChangeRoomTime(RoomTime.Prequestion);
                     ChangeRoomPhase(RoomPhase.Prequestion);
                     break;
                 case RoomPhase.Prequestion:
-                    CurrentTime = (int)RoomTime.Question;
+                    ChangeRoomTime(RoomTime.Question);
                     ChangeRoomPhase(RoomPhase.Question);
                     break;
                 case RoomPhase.Question:
-                    CurrentTime = (int)RoomTime.Postquestion;
+                    ChangeRoomTime(RoomTime.Postquestion);
                     ChangeRoomPhase(RoomPhase.Postquestion);
                     break;
                 case RoomPhase.Postquestion:
@@ -83,28 +81,58 @@ namespace Quizr.API.Models
                     // Check if on last question
                     if (CurrentQuestionIndex == QuizrHub.Quizzes[QuizId].Questions.Count - 1)
                     {
-                        //<insert code to emit quiz results>
+                        // Send quiz results
+                        SendQuizResults();
                         ChangeRoomPhase(RoomPhase.Finished);
                         tempTimer.Stop();
+                        ClearUsers();
+                        CurrentQuestionIndex = 0;
                     }
                     else
                     {
                         // Move to next question
                         CurrentQuestionIndex++;
-                        // <insert code for changing question on client here>
-                        CurrentTime = (int)RoomTime.Prequestion;
+                        SendNewQuestion();
+                        //<insert code here to switch question>
+                        ChangeRoomTime(RoomTime.Prequestion);
                         ChangeRoomPhase(RoomPhase.Prequestion);
                     }
                     break;
             }
         }
 
-        public async void ChangeRoomPhase(RoomPhase newPhase)
+        public void ChangeRoomPhase(RoomPhase newPhase)
         {
             Phase = newPhase;
 
             // emit new room phase to client
-            await _hubContext.Clients.Group(Id).UpdateRoomPhase(Phase.ToString().ToLower());
+            _hubContext.Clients.Group(Id).UpdateRoomPhase(Phase.ToString().ToLower());
+        }
+
+        public async void ChangeRoomTime(RoomTime newTime)
+        {
+            CurrentTime = (int)newTime;
+            await _hubContext.Clients.Group(Id).UpdateRoomTimer(CurrentTime);
+        }
+
+        private void ClearUsers()
+        {
+            foreach(var user in Users)
+            {
+                _hubContext.Groups.RemoveFromGroupAsync(QuizrHub.quizrClients[user].ConnectionId, Id);
+            }
+            Users.Clear();
+        }
+
+        private void SendQuizResults()
+        {
+            var quizResults = new QuizResults();
+            _hubContext.Clients.Groups(Id).ReceiveQuizResults(quizResults);
+        }
+
+        private void SendNewQuestion()
+        {
+            _hubContext.Clients.Group(Id).ReceiveNewQuestion(QuizrHub.Quizzes[QuizId].Questions[CurrentQuestionIndex]);
         }
     }
 }

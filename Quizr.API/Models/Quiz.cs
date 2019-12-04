@@ -5,6 +5,6 @@ namespace Quizr.API.Models
     public class Quiz
     {
         public string Name { get; set; }
-        public ICollection<Question> Questions { get; set; }
+        public IList<Question> Questions { get; set; }
     }
 }

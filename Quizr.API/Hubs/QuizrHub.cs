@@ -16,7 +16,7 @@ namespace Quizr.API.Hubs
         /// <summary>
         /// Dictionary mapping usernames to User objects (ensures unique usernames)
         /// </summary>
-        private static ConcurrentDictionary<string, User> quizrClients = new ConcurrentDictionary<string, User>();
+        public static ConcurrentDictionary<string, User> quizrClients = new ConcurrentDictionary<string, User>();
 
         /// <summary>
         /// Quiz Rooms available (represented by groups)
@@ -49,15 +49,39 @@ namespace Quizr.API.Hubs
                     },
                     new Question
                     {
-                        Text = "Who is the current president of CSUB?",
+                        Text = "What year was CSUB opened?",
                         Answers = new List<string>
                         {
-                            "Lynnette Zelezny",
-                            "Truett S. Cathy",
-                            "Horace Mitchell",
-                            "Vernon B. Harper Jr."
+                            "1971",
+                            "1980",
+                            "1965",
+                            "1970"
                         },
-                        CorrectAnswerIndex = 0
+                        CorrectAnswerIndex = 3
+                    },
+                    new Question
+                    {
+                        Text = "How many students were enrolled for Fall 2019 at CSUB?",
+                        Answers = new List<string>
+                        {
+                            "10,158",
+                            "11,206",
+                            "14,344",
+                            "9,878"
+                        },
+                        CorrectAnswerIndex = 1
+                    },
+                    new Question
+                    {
+                        Text = "From 1979-1981 which CSUB sports team was Gordon the captain of?",
+                        Answers = new List<string>
+                        {
+                            "Water Polo",
+                            "Golf",
+                            "Tennis",
+                            "Cheerleading"
+                        },
+                        CorrectAnswerIndex = 1
                     }
                 }
             }
@@ -70,9 +94,9 @@ namespace Quizr.API.Hubs
             {
                 var quizrHubContextService = (IQuizrHubContextService)Context.GetHttpContext().RequestServices.GetService(typeof(IQuizrHubContextService));
                 quizrRooms.Add(new Room(quizrHubContextService.GetQuizrHubContext()));
-                quizrRooms[0].Id = "#test";
+                quizrRooms[0].Id = "#1234";
 
-                // Make room host first quiz available in this.Quizzes list
+                // Make room host first quiz available in the this.Quizzes list
                 quizrRooms[0].QuizId = 0;
             }
 
@@ -80,7 +104,7 @@ namespace Quizr.API.Hubs
             return base.OnConnectedAsync();
         }
 
-        public override Task OnDisconnectedAsync(Exception exception)
+        public override async Task OnDisconnectedAsync(Exception exception)
         {
             User userToDelete = quizrClients.FirstOrDefault(client => client.Value.ConnectionId == Context.ConnectionId).Value;
             bool userRemoved;
@@ -88,15 +112,28 @@ namespace Quizr.API.Hubs
             // If user found
             if(userToDelete != null)
             {
+                //Remove user from any groups he/she is connected to.
+                //TODO: refactor user to contain roomId and room to not contain reference to all users.
+                foreach (var room in quizrRooms)
+                {
+                    if (room.Users.Contains(userToDelete.Name))
+                    {
+                        room.Users.Remove(userToDelete.Name);
+                        await Groups.RemoveFromGroupAsync(userToDelete.ConnectionId, room.Id);
+                        await Clients.Group(room.Id).UpdateQuizRoomUsers(room.Users.Count);
+                    }
+                }
+
                 // Remove user from connected quizrClients
                 userRemoved = quizrClients.TryRemove(userToDelete.Name, out _);
+
                 if (userRemoved)
                     Console.WriteLine("user removed");
                 else
                     Console.WriteLine("Unable to remove user");
             }
 
-            return base.OnDisconnectedAsync(exception);
+            //return base.OnDisconnectedAsync(exception);
         }
 
         public User Login(string name)
@@ -122,6 +159,14 @@ namespace Quizr.API.Hubs
             {
 
                 await Groups.AddToGroupAsync(quizrClients[userName].ConnectionId, roomId);
+
+                //Add user to room
+                quizrRooms.FirstOrDefault(r => r.Id == roomId).Users.Add(userName);
+
+                await Clients.Group(room.Id).UpdateQuizRoomUsers(room.Users.Count);
+
+                // send question to client
+                await Clients.Client(quizrClients[userName].ConnectionId).ReceiveNewQuestion(Quizzes[room.QuizId].Questions[room.CurrentQuestionIndex]);
 
                 // Send current time to user
                 room.StartTimer();
