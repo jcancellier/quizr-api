@@ -5,5 +5,6 @@ namespace Quizr.API.Hubs
     public interface IQuizrClient
     {
         Task UpdateRoomTimer(int time);
+        Task UpdateRoomPhase(string phase);
     }
 }

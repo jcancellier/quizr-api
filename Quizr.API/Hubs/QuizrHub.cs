@@ -17,12 +17,50 @@ namespace Quizr.API.Hubs
         /// Dictionary mapping usernames to User objects (ensures unique usernames)
         /// </summary>
         private static ConcurrentDictionary<string, User> quizrClients = new ConcurrentDictionary<string, User>();
-         
+
         /// <summary>
         /// Quiz Rooms available (represented by groups)
         /// </summary>
         private static List<Room> quizrRooms = new List<Room> {
              //new Room { Id = "#test" }
+        };
+
+        /// <summary>
+        /// Quizzes available for rooms
+        /// </summary>
+        public static List<Quiz> Quizzes = new List<Quiz>
+        {
+            new Quiz
+            {
+                Name = "Test Quiz",
+                Questions = new List<Question>
+                {
+                    new Question
+                    {
+                        Text = "Who is the current president of CSUB?",
+                        Answers = new List<string>
+                        {
+                            "Lynnette Zelezny",
+                            "Truett S. Cathy",
+                            "Horace Mitchell",
+                            "Vernon B. Harper Jr."
+                        },
+                        CorrectAnswerIndex = 0
+                    },
+                    new Question
+                    {
+                        Text = "Who is the current president of CSUB?",
+                        Answers = new List<string>
+                        {
+                            "Lynnette Zelezny",
+                            "Truett S. Cathy",
+                            "Horace Mitchell",
+                            "Vernon B. Harper Jr."
+                        },
+                        CorrectAnswerIndex = 0
+                    }
+                }
+            }
         };
 
         public override Task OnConnectedAsync()
@@ -33,6 +71,9 @@ namespace Quizr.API.Hubs
                 var quizrHubContextService = (IQuizrHubContextService)Context.GetHttpContext().RequestServices.GetService(typeof(IQuizrHubContextService));
                 quizrRooms.Add(new Room(quizrHubContextService.GetQuizrHubContext()));
                 quizrRooms[0].Id = "#test";
+
+                // Make room host first quiz available in this.Quizzes list
+                quizrRooms[0].QuizId = 0;
             }
 
             Console.WriteLine($"{Context.ConnectionId} connected");
@@ -83,8 +124,8 @@ namespace Quizr.API.Hubs
                 await Groups.AddToGroupAsync(quizrClients[userName].ConnectionId, roomId);
 
                 // Send current time to user
-                await Clients.Group(room.Id).UpdateRoomTimer(room.CurrentTime);
                 room.StartTimer();
+                await Clients.Group(room.Id).UpdateRoomTimer(room.CurrentTime);
                 return room;
             } 
 

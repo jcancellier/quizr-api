@@ -3,8 +3,9 @@ namespace Quizr.API.Constants.Room
 {
     public enum RoomTime
     {
-        Lobby = 30,
-        Prequestion = 30,
-        QuestionTime = 30
+        Lobby = 5,
+        Prequestion = 5,
+        Question = 5,
+        Postquestion = 5
     }
 }

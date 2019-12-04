@@ -7,6 +7,7 @@ namespace Quizr.API.Constants.Room
         Lobby,
         Prequestion,
         Question,
+        Postquestion,
         Finished
     }
 }

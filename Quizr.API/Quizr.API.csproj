@@ -15,4 +15,7 @@
     <Folder Include="Constants\Room\" />
     <Folder Include="Services\" />
   </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Models\Answer.cs" />
+  </ItemGroup>
 </Project>
