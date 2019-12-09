@@ -9,5 +9,7 @@ namespace Quizr.API.Models
     {
         public string Name { get; set; }
         public string ConnectionId { get; set; }
+        public int Score { get; set; }
+        public int CurrentQuestionAnswer { get; set; }
     }
 }

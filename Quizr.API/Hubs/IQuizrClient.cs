@@ -8,7 +8,7 @@ namespace Quizr.API.Hubs
         Task UpdateRoomTimer(int time);
         Task UpdateRoomPhase(string phase);
         Task UpdateQuizRoomUsers(int userCount);
-        Task ReceiveQuizResults(QuizResults quizResults);
-        Task ReceiveNewQuestion(Question question);
+        Task ReceiveQuizResults(object quizResults);
+        Task ReceiveNewQuestion(object question);
     }
 }

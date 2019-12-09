@@ -157,24 +157,66 @@ namespace Quizr.API.Hubs
             Room room = quizrRooms.FirstOrDefault(r => r.Id == roomId);
             if (room != null && (room.Phase == RoomPhase.NotStarted || room.Phase == RoomPhase.Lobby || room.Phase == RoomPhase.Finished))
             {
-
+                //Add users to signalR group with name as room's id
                 await Groups.AddToGroupAsync(quizrClients[userName].ConnectionId, roomId);
 
-                //Add user to room
+                // Add user to room
                 quizrRooms.FirstOrDefault(r => r.Id == roomId).Users.Add(userName);
 
+                // emit user count to clients
                 await Clients.Group(room.Id).UpdateQuizRoomUsers(room.Users.Count);
 
+                // Construct question object with currentQuestion and questionCount for client usage
+                object initialQuestion = new
+                {
+                    text = Quizzes[room.QuizId].Questions[0].Text,
+                    answers = Quizzes[room.QuizId].Questions[0].Answers,
+                    currentQuestionIndex = 1,
+                    questionCount = Quizzes[room.QuizId].Questions.Count
+                };
                 // send question to client
-                await Clients.Client(quizrClients[userName].ConnectionId).ReceiveNewQuestion(Quizzes[room.QuizId].Questions[room.CurrentQuestionIndex]);
+                await Clients.Client(quizrClients[userName].ConnectionId).ReceiveNewQuestion(initialQuestion);
 
                 // Send current time to user
                 room.StartTimer();
+
+                // Emit initial room time to clients
                 await Clients.Group(room.Id).UpdateRoomTimer(room.CurrentTime);
                 return room;
             } 
 
             throw new HubException("Group Does not exist");
+        }
+
+        public object AnswerQuestion(int answer, string roomId)
+        {
+            // find user
+            User user = quizrClients.FirstOrDefault((userKeyValue) => userKeyValue.Value.ConnectionId == Context.ConnectionId).Value;
+
+            // find room
+            Room room = quizrRooms.FirstOrDefault((r) => r.Id == roomId);
+
+            // find current question
+            Question question = Quizzes[room.QuizId].Questions[room.CurrentQuestionIndex];
+
+            // If answer is correct add 1 + current room time
+            bool isQuestionCorrect = false;
+            if (question.CorrectAnswerIndex == answer)
+            {
+                user.Score += (1 + room.CurrentTime);
+                isQuestionCorrect = true;
+            }
+
+            // Return object containing question results
+            object questionResult = new
+            {
+                isAnswerCorrect = isQuestionCorrect,
+                correctAnswer = question.CorrectAnswerIndex,
+                answer,
+                currentScore = user.Score
+            };
+
+            return questionResult;
         }
     }
 }

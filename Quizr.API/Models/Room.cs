@@ -2,6 +2,7 @@
 using Quizr.API.Constants.Room;
 using Quizr.API.Hubs;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Timers;
 
@@ -82,8 +83,8 @@ namespace Quizr.API.Models
                     if (CurrentQuestionIndex == QuizrHub.Quizzes[QuizId].Questions.Count - 1)
                     {
                         // Send quiz results
-                        SendQuizResults();
                         ChangeRoomPhase(RoomPhase.Finished);
+                        SendQuizResults();
                         tempTimer.Stop();
                         ClearUsers();
                         CurrentQuestionIndex = 0;
@@ -126,13 +127,45 @@ namespace Quizr.API.Models
 
         private void SendQuizResults()
         {
-            var quizResults = new QuizResults();
+            // get all user's in room
+            var users = new List<User>();
+            foreach (var user in Users)
+            {
+                users.Add(QuizrHub.quizrClients[user]);
+            }
+
+            // Find top 3 users
+            var sortedUsers = users.OrderByDescending((u) => u.Score);
+
+            var top3Users = new List<User>();
+            if (sortedUsers.Count() >= 3)
+                top3Users = sortedUsers.Take(3).ToList();
+            else
+            {
+                top3Users = sortedUsers.ToList();
+            }
+
+            object quizResults = new
+            {
+                topThreeUsers = top3Users
+            };
+
             _hubContext.Clients.Groups(Id).ReceiveQuizResults(quizResults);
         }
 
         private void SendNewQuestion()
         {
-            _hubContext.Clients.Group(Id).ReceiveNewQuestion(QuizrHub.Quizzes[QuizId].Questions[CurrentQuestionIndex]);
+            var question = QuizrHub.Quizzes[QuizId].Questions[CurrentQuestionIndex];
+
+            object questionToSend = new
+            {
+                text = question.Text,
+                answers = question.Answers,
+                currentQuestionIndex = CurrentQuestionIndex+1,
+                questionCount = QuizrHub.Quizzes[QuizId].Questions.Count
+            };
+
+            _hubContext.Clients.Group(Id).ReceiveNewQuestion(questionToSend);
         }
     }
 }
